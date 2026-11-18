@@ -1,0 +1,60 @@
+
+:root {
+
+  --sf-ebony: #141414;
+  --sf-lacquer: #0D0C0B;
+  --sf-graphite: #1E1C1A;
+  --sf-plaster: #F5F0E8;
+  --sf-primer: #FBF8F3;
+
+  --sf-gilt: #D9AE45;
+  --sf-gilt-light: #E6C35C;
+  --sf-bronze: #85601A;
+  --sf-gild: linear-gradient(90deg, #FEE670 0%, #BF8920 100%);
+  --sf-oak: #B5997C;
+  --sf-walnut: #4A3424;
+
+  --sf-ivory: #F3EDE2;
+  --sf-stone: #A69D90;
+  --sf-umber: #5E564C;
+  --sf-seam: #3A3631;
+  --sf-sand: #E2D9CB;
+  --sf-line-dark: #7A7268;
+  --sf-line-light: #8A8176;
+  --sf-sage: #3E6B4F;
+  --sf-sage-light: #8DB89A;
+  --sf-oxide: #A3402A;
+  --sf-oxide-light: #E38B74;
+
+  --sf-font-display: 'Cormorant Garamond', Georgia, serif;
+  --sf-font-text: 'Manrope', system-ui, sans-serif;
+  --sf-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sf-text-display-xl: clamp(56px, 7.2vw, 104px);
+  --sf-text-display-l: clamp(44px, 5vw, 72px);
+  --sf-text-h2: clamp(36px, 3.9vw, 56px);
+  --sf-text-h3: clamp(26px, 2.4vw, 34px);
+  --sf-text-body: 16px;
+  --sf-text-small: 14px;
+  --sf-text-eyebrow: 12px;
+
+  --sf-space-1: 4px;
+  --sf-space-2: 8px;
+  --sf-space-3: 12px;
+  --sf-space-4: 16px;
+  --sf-space-5: 24px;
+  --sf-space-6: 32px;
+  --sf-space-7: 48px;
+  --sf-space-8: 64px;
+  --sf-space-9: 96px;
+  --sf-space-10: 128px;
+  --sf-space-11: 160px;
+  --sf-radius: 2px;
+  --sf-reveal-inset: 6px;
+  --sf-control-h: 52px;
+  --sf-container: 1240px;
+
+  --sf-dur-fast: 160ms;
+  --sf-dur-base: 320ms;
+  --sf-dur-slow: 640ms;
+  --sf-ease-plane: cubic-bezier(.2, .7, .1, 1);
+}
