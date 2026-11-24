@@ -39,6 +39,23 @@
     else el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   }
 
+  /* ── home (both A/B versions): links to a section of this page stay on this page, so a visitor on one version is
+     never sent to the other one; the version is remembered for the server-side split (index.php) ── */
+  var isHome = doc.body.getAttribute('data-page') === 'home';
+  if (isHome) {
+    var homeRoot = location.pathname.replace(/v2\/(index\.html)?$/, '');
+    $$('a[href]').forEach(function (a) {
+      var raw = a.getAttribute('href');
+      if (!raw || raw.charAt(0) === '#' || /^(tel|sms|mailto):/i.test(raw)) return;
+      var u; try { u = new URL(raw, location.href); } catch (e) { return; }
+      if (u.origin !== location.origin) return;
+      if (u.hash.length > 1 && doc.getElementById(decodeURIComponent(u.hash.slice(1)))) a.setAttribute('href', u.hash);
+      else if (!u.hash && u.pathname === homeRoot) a.setAttribute('href', '#top');
+    });
+    var pver = doc.body.getAttribute('data-page-version');
+    if (pver) { try { doc.cookie = 'sf_home=' + pver + '; max-age=5184000; path=/; samesite=lax'; } catch (e) { /* cookies blocked: the split just draws again */ } }
+  }
+
   /* ── header + menu ───────────────────────────────────────────────────── */
   var hdr = $('[data-header]');
   function onScroll() { if (hdr) hdr.classList.toggle('is-solid', window.scrollY > 24); }
@@ -92,6 +109,65 @@
     });
   }
 
+  /* ── hero (V2 of the A/B test): background video of real jobs, after load, with a pause button (WCAG 2.2.2) ─ */
+  var hv = $('[data-hvid]');
+  if (hv) {
+    var hvBtn = $('[data-hvid-toggle]');
+    var conn = navigator.connection || {};
+    var lite = reduce || conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType || '');
+    var hvUser = false; // the visitor paused it: scrolling back does not restart it
+    var hvSet = function (playing) {
+      if (!hvBtn) return;
+      hvBtn.setAttribute('aria-pressed', String(!playing));
+      hvBtn.setAttribute('aria-label', playing ? 'Pause the background video' : 'Play the background video');
+      var u = $('use', hvBtn); if (u) u.setAttribute('href', playing ? '#i-pause' : '#i-play');
+    };
+    var hvPlay = function () { var pr = hv.play(); if (pr && pr.catch) pr.catch(function () {}); };
+    // the frames go to a canvas: a video that starts after load would become a late "largest content" (LCP); a canvas
+    // is never a candidate. Same crop as object-fit: cover with object-position 60% 50%.
+    var hvCv = $('.hvid__cv'), hvCtx = hvCv && hvCv.getContext ? hvCv.getContext('2d') : null;
+    var hvFrame = function () {
+      var vw = hv.videoWidth, vh = hv.videoHeight;
+      if (!hvCtx || !vw) return;
+      var d = Math.min(1.5, window.devicePixelRatio || 1);
+      var cw = Math.max(1, Math.round(hvCv.clientWidth * d)), ch = Math.max(1, Math.round(hvCv.clientHeight * d));
+      if (hvCv.width !== cw || hvCv.height !== ch) { hvCv.width = cw; hvCv.height = ch; }
+      var r = Math.max(cw / vw, ch / vh), dw = vw * r, dh = vh * r;
+      hvCtx.drawImage(hv, (cw - dw) * 0.6, (ch - dh) * 0.5, dw, dh);
+    };
+    var hvDraw = function () {
+      if (!hvCtx) return;
+      var on = false;
+      var step = function () {
+        hvFrame();
+        if (!on) { on = true; hvCv.classList.add('is-on'); }
+        if (hv.requestVideoFrameCallback) hv.requestVideoFrameCallback(step);
+        else requestAnimationFrame(function () { if (!hv.paused) step(); else hv.addEventListener('play', step, { once: true }); });
+      };
+      if (hv.requestVideoFrameCallback) hv.requestVideoFrameCallback(step); else step();
+    };
+    var hvStart = function () {
+      var src = null;
+      $$('source', hv).forEach(function (s) { if (!src && window.matchMedia(s.getAttribute('data-media') || 'all').matches) src = s.getAttribute('data-src'); });
+      if (!src) return;
+      hv.addEventListener('playing', function () { hvDraw(); hvSet(true); }, { once: true });
+      hv.src = src;
+      hvPlay();
+      if (hvBtn) hvBtn.hidden = false;
+    };
+    if (!lite) {
+      var hvGo = function () { setTimeout(hvStart, 400); };
+      if (doc.readyState === 'complete') hvGo(); else window.addEventListener('load', hvGo, { once: true });
+    }
+    if (hvBtn) hvBtn.addEventListener('click', function () { if (hv.paused) { hvUser = false; hvPlay(); hvSet(true); } else { hvUser = true; hv.pause(); hvSet(false); } });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) {
+        if (!hv.currentSrc || hvUser) return;
+        if (es[0].isIntersecting) hvPlay(); else hv.pause();
+      }, { threshold: 0.05 }).observe(hv.parentNode); // the hero backdrop, not the 2 px video
+    }
+  }
+
   /* ── forms: audience, scope, town, details, ticket, inheritance ─────── */
   var AREA = window.SF_AREA || {};
   var hero = $('#quote-hero');
@@ -128,6 +204,8 @@
     var when = val(form, 'timeline'); if (when) parts.push('Start: ' + when);
     var co = val(form, 'company'); if (co) parts.push('Company: ' + co);
     var reach = val(form, 'reach'); if (reach) parts.push('Best way to reach: ' + reach);
+    // which home version the visitor saw (A/B test: V1 "the job building itself", V2 video hero)
+    var pv = doc.body.getAttribute('data-page-version'); if (pv) parts.push('Page version: ' + pv.toUpperCase());
     var notes = val(form, 'notes'); if (notes) parts.push('Notes: ' + notes.replace(/\s+/g, ' '));
     d.value = parts.join(' | ').slice(0, 1000);
     return d.value;
@@ -220,7 +298,7 @@
     });
   });
   $$('a[href="#estimate"]:not([data-pick]):not([data-pro]), a[href="/#estimate"]').forEach(function (a) {
-    a.addEventListener('click', function (e) { if (location.pathname === '/' || a.getAttribute('href') === '#estimate') { e.preventDefault(); goTo('#top'); } });
+    a.addEventListener('click', function (e) { if (isHome || a.getAttribute('href') === '#estimate') { e.preventDefault(); goTo('#top'); } });
   });
 
   /* ── mobile bar: after the hero form, hidden while a form is on screen ─ */
