@@ -215,10 +215,22 @@
   Reel.prototype.intro = function () {
     if (reduce || this.touched) return;
     var self = this, s = this.cur;
-    this.load(s).then(function () {
-      if (self.touched || self.cur !== s) return;
-      self.introT = setTimeout(function () { self.introT = 0; if (!self.touched && self.cur === s) self.build(true); }, 900);
-    });
+    var lazy = this.root.hasAttribute('data-reel-lazy');
+    var go = function () {
+      self.load(s).then(function () {
+        if (self.touched || self.cur !== s) return;
+        self.introT = setTimeout(function () { self.introT = 0; if (!self.touched && self.cur === s) self.build(true); }, lazy ? 500 : 900);
+      });
+    };
+    // fora da 1ª tela (seção da V2): só carrega e abre quando o rolo chega a ~2/3 da tela
+    if (lazy && 'IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        if (!es[0].isIntersecting) return;
+        io.disconnect();
+        go();
+      }, { rootMargin: '0px 0px -30% 0px' });
+      io.observe(this.root);
+    } else go();
   };
 
   /* troca a obra (passo 1 do form). Mesma obra: monta de novo. */

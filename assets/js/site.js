@@ -90,18 +90,32 @@
   var reelEl = $('[data-reel]');
   var reel = reelEl && typeof window.HeroReel !== 'undefined' ? new window.HeroReel(reelEl) : null;
   if (reel && !reel.cur) reel = null;
+  // V1: the reel is the hero and follows step 1 of the form. V2: it is the "Before & after" section below the video
+  // hero, with its own tabs; the hero form does not drive it.
+  var reelInHero = !!(reel && reelEl.closest('.hero'));
   function showStage(svc, play) {
-    if (!SERVICES[svc]) return;
+    if (!SERVICES[svc] || !reelInHero) return;
     var n = $('[data-stage-name]');
     if (n) n.textContent = SERVICES[svc].name;
     if (reel) reel.show(svc, play);
+  }
+  var baTabs = $$('[data-ba-tab]');
+  if (reel && !reelInHero && baTabs.length) {
+    baTabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        baTabs.forEach(function (x) { x.setAttribute('aria-pressed', String(x === t)); });
+        var c = $('[data-ba-current]'); if (c) c.textContent = t.getAttribute('data-ba-name');
+        reel.show(t.getAttribute('data-ba-tab'), true);
+      });
+      t.addEventListener('pointerenter', function () { reel.prefetch(t.getAttribute('data-ba-tab')); }, { once: true });
+    });
   }
   if (reel) {
     // the finished photo is the LCP; after the page settles the job rewinds to the start and builds again
     var startIntro = function () { reel.intro(); };
     if (doc.readyState === 'complete') startIntro(); else window.addEventListener('load', startIntro, { once: true });
     // warm up a job's photos when the visitor is about to pick it
-    $$('#quote-hero input[name="service"]').forEach(function (r) {
+    if (reelInHero) $$('#quote-hero input[name="service"]').forEach(function (r) {
       var lab = r.closest('label');
       var warm = function () { reel.prefetch(r.value); };
       if (lab) { lab.addEventListener('pointerenter', warm, { once: true }); lab.addEventListener('touchstart', warm, { once: true, passive: true }); }
@@ -300,6 +314,35 @@
   $$('a[href="#estimate"]:not([data-pick]):not([data-pro]), a[href="/#estimate"]').forEach(function (a) {
     a.addEventListener('click', function (e) { if (isHome || a.getAttribute('href') === '#estimate') { e.preventDefault(); goTo('#top'); } });
   });
+
+  /* ── V2 on phones: step 1 starts with the ZIP only, so the video shows above the form; Continue (or Enter) with a
+     valid ZIP opens "What are we building?" and the tiles; the next Continue is the normal step 1. If a project is
+     already chosen (e.g. "Start with this project"), the normal flow runs straight away. ─ */
+  var zipFirst = hv && hero ? window.matchMedia('(max-width: 760px)') : null;
+  if (zipFirst) {
+    var zfOpen = function (e) {
+      if (!zipFirst.matches || hero.classList.contains('is-open')) return;
+      var s1 = $('[data-cs-step="1"]', hero);
+      if (!s1 || s1.hidden || val(hero, 'service')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var z = $('[name="zip"]', hero), err = $('[data-cs-error-for="zip"]', hero);
+      if (!/^\d{5}$/.test(String(z.value || '').trim())) {
+        if (err) err.hidden = false;
+        z.setAttribute('aria-invalid', 'true');
+        z.focus();
+        return;
+      }
+      if (err) err.hidden = true;
+      z.removeAttribute('aria-invalid');
+      hero.classList.add('is-open');
+      var q = $('.qf__q', hero);
+      if (q) { q.setAttribute('tabindex', '-1'); q.focus({ preventScroll: true }); }
+      window.scrollTo({ top: Math.max(0, hero.getBoundingClientRect().top + window.scrollY - (hdr ? hdr.offsetHeight : 0) - 8), behavior: reduce ? 'auto' : 'smooth' });
+    };
+    hero.addEventListener('click', function (e) { if (e.target && e.target.closest && e.target.closest('[data-cs-next]')) zfOpen(e); }, true);
+    hero.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.name === 'zip') zfOpen(e); }, true);
+  }
 
   /* ── mobile bar: after the hero form, hidden while a form is on screen ─ */
   var mbar = $('[data-mbar]');
