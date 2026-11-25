@@ -43,7 +43,7 @@
      never sent to the other one; the version is remembered for the server-side split (index.php) ── */
   var isHome = doc.body.getAttribute('data-page') === 'home';
   if (isHome) {
-    var homeRoot = location.pathname.replace(/v2\/(index\.html)?$/, '');
+    var homeRoot = location.pathname.replace(/v[0-9]+\/(index\.html)?$/, ''); // a variante de teste mora em /v1/
     $$('a[href]').forEach(function (a) {
       var raw = a.getAttribute('href');
       if (!raw || raw.charAt(0) === '#' || /^(tel|sms|mailto):/i.test(raw)) return;
